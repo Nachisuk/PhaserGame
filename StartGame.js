@@ -3,11 +3,12 @@ const express = require('express'); //load express with the use of requireJs
 var app =express();
 var path = require('path');
 
-app.use(express.static(path.join(__dirname+'/')));
+
+app.use(express.static(path.join(__dirname+'/Gra')));
 
 app.get('/', function(req,res)
 {
-    res.sendFile(path.join(__dirname+'/MainView.html'));
+    res.sendFile(path.join(__dirname+'/Gra/MainView.html'));
 });
 
 app.listen(port, function() { //Listener for specified port
