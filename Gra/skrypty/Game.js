@@ -87,7 +87,7 @@ function create ()
 
     //tworzenie asteroid
     asteroids = this.physics.add.group();
-    asteroidEvent = this.time.addEvent({delay:5000, callback: createAsteroid, callbackScope: this});
+   // asteroidEvent = this.time.addEvent({delay:5000, callback: createAsteroid, callbackScope: this});
 
     //kolizje
     //this.physics.add.collider(player,asteroids);
@@ -183,12 +183,20 @@ function fireBullet () {
 
 function createEnemies()
 {
-    timedEvent.reset({ delay: Phaser.Math.Between(100,5000), callback: createEnemies, callbackScope: this, repeat: 1});
-    var enemyPositionX = Math.floor(Math.random()*1400)+1;
-    var enemy = enemies.create(enemyPositionX,10,'enemy');
-    enemy.body.setVelocityY(200);
-    enemy.setCollideWorldBounds(true);
-    enemy.body.onWorldBounds = true;
+    timedEvent.reset({ delay: Phaser.Math.Between(3000,10000), callback: createEnemies, callbackScope: this, repeat: 1});
+    var enemyPositionX = 100;
+    var enemyAmount = Math.floor(Math.random()*10)+1;
+    for(var i =0; i< enemyAmount; i++)
+    {
+
+        var enemy = enemies.create(enemyPositionX,10,'enemy');
+        enemy.body.setVelocityY(20);
+        enemy.setCollideWorldBounds(true);
+        enemy.body.onWorldBounds = true;
+        enemy.hitpoints = 2;
+        enemyPositionX = enemyPositionX + 150;
+    }
+
    // enemy.on('worldbounds',deleteEnemy);
     console.log('fajno');
 }
@@ -239,9 +247,14 @@ function playerEnemyBulletCollision(player,bullet)
 
 function enemyPlayerBulletCollision(enemy,bullet)
 {
-  var explode = this.add.sprite(enemy.body.x+15,enemy.body.y+15,'boom');
-  explode.anims.play('explode');
-  enemy.destroy();
+
+  enemy.hitpoints = enemy.hitpoints-1;
+  if(enemy.hitpoints <= 0)
+  {
+    var explode = this.add.sprite(enemy.body.x+15,enemy.body.y+15,'boom');
+    explode.anims.play('explode');
+    enemy.destroy();
+  }
   bullet.destroy();
   //explode.destroy();
   console.log('celny strzał');
@@ -253,12 +266,12 @@ function asteroidPlayerBulletCollision(asteroid,bullet)
 }
 function enemyenemyCollision(enemy1,enemy2)
 {
-    enemy1.destroy();
-    enemy2.destroy();
+   // enemy1.destroy();
+  //  enemy2.destroy();
 }
 function asteroidEnemyCollision(enemy,asteroid)
 {
-    enemy.destroy();
+   // enemy.destroy();
 }
 function asteroidAsteroidCollision(asteroid1,asteroid2)
 {
