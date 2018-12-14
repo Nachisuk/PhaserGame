@@ -40,6 +40,11 @@ var enemyBullets;
 var explosions;
 var explodeAnimation;
 
+var present;
+var presentImage;
+var roundFromPresent;
+var presentTimedEvent;
+
 function preload ()
 {
     //ładowanie obrazków
@@ -53,6 +58,7 @@ function preload ()
    this.load.image('asteroid3','assety/asteroidaType3.png');
    this.load.image('asteroid4','assety/asteroidaType4.png');
    this.load.spritesheet('boom', 'assety/explosion.png', { frameWidth: 64, frameHeight: 64, endFrame: 23 });
+   this.load.spritesheet('coin', 'assety/coin.png', { frameWidth: 32, frameHeight: 32});
 }
 
 function create ()
@@ -82,12 +88,18 @@ function create ()
 
     //tworzenie przeciwników
     enemies = this.physics.add.group();
-    timedEvent = this.time.addEvent({delay:3000, callback: createEnemies, callbackScope: this});
+    timedEvent = this.time.addEvent({delay:2000, callback: createEnemies, callbackScope: this});
+    timedEvent.paused = true;
     //tworzenie pocisków przeciwników
 
     //tworzenie asteroid
     asteroids = this.physics.add.group();
    // asteroidEvent = this.time.addEvent({delay:5000, callback: createAsteroid, callbackScope: this});
+
+   present = this.physics.add.group();
+   roundFromPresent = -1;
+   presentTimedEvent = this.time.addEvent({delay:2000, callback: createPresent, callbackScope: this});
+   presentTimedEvent.paused = true;
 
     //kolizje
     //this.physics.add.collider(player,asteroids);
@@ -96,6 +108,9 @@ function create ()
     //this.physics.add.collider(enemies,enemies);
     //this.physics.add.collider(bullets,enemies);
     //this.physics.add.collider(bullets,asteroids);
+
+    this.physics.add.overlap(player, present, playerPresentCollision, null, this);
+
     this.physics.add.overlap(player,asteroids,playerAsteroidCollision,null,this);
 
     this.physics.add.overlap(player,enemies,playerEnemyCollision,null,this);
@@ -114,6 +129,15 @@ function create ()
         frameRate: 20
     };
     this.anims.create(config);
+
+    var config2 = {
+        key: 'presentImage',
+        frames: this.anims.generateFrameNumbers('coin', { start: 0, end: 6}),
+        frameRate: 20,
+        repeat: -1
+    };
+    this.anims.create(config2);
+
     //sterowanie
     cursors = this.input.keyboard.createCursorKeys();
     fireButton = this.input.keyboard.addKeys({ 'up': Phaser.Input.Keyboard.KeyCodes.W, 'down': Phaser.Input.Keyboard.KeyCodes.S });
@@ -133,21 +157,21 @@ function update (time,delta)
     //sterowanie
         if(cursors.left.isDown)
         {
-            player.body.setVelocityX(-200);
+            player.body.setVelocityX(-300);
         }
         else if(cursors.right.isDown)
         {
-            player.body.setVelocityX(200);
+            player.body.setVelocityX(300);
         }
         
         if(cursors.up.isDown)
         {
-            player.body.setVelocityY(-200);
+            player.body.setVelocityY(-300);
         }
 
         if(cursors.down.isDown)
         {
-            player.body.setVelocityY(200);
+            player.body.setVelocityY(300);
         }
         if (fireButton.up.isDown)
         {
@@ -162,6 +186,32 @@ function update (time,delta)
             }
         }
     }.bind(this));
+
+
+    if(enemies.getLength()==0 && presentTimedEvent.paused == true)//jezeli nie mamy na ekranie juz przeciwnikow i nie tworzy sie prezent
+    {
+        if (timedEvent.paused && roundFromPresent == 1) // jezeli nie tworzą się jeszcze enemy a juz to druga runda byla
+        {
+            presentTimedEvent.paused = false; //wywolaj tworzenie prezentu
+            roundFromPresent = 0; //runda -> 0 
+        }
+        else if (timedEvent.paused) //jezeli jest to jakas inna runda a a nie tworza sie jeszcze przeciwnicy 
+        {
+            roundFromPresent++; //zwieksz runde
+            timedEvent.paused = false; //wznow tworzenie przeciwnikow
+        }
+        else 
+        {
+            timedEvent.paused = false; //wznow tworzenie przeciwnikow
+        }
+        
+    }
+    else 
+    {
+        timedEvent.paused = true;
+    }
+
+    
 }
 
 function fireBullet () {
@@ -183,6 +233,7 @@ function fireBullet () {
 
 function createEnemies()
 {
+    
     timedEvent.reset({ delay: Phaser.Math.Between(3000,10000), callback: createEnemies, callbackScope: this, repeat: 1});
     var enemyPositionX = 100;
     var enemyAmount = Math.floor(Math.random()*10)+1;
@@ -195,11 +246,28 @@ function createEnemies()
         enemy.body.onWorldBounds = true;
         enemy.hitpoints = 2;
         enemyPositionX = enemyPositionX + 150;
+        
     }
 
    // enemy.on('worldbounds',deleteEnemy);
     console.log('fajno');
 }
+
+function createPresent()
+{
+    presentTimedEvent.reset({delay:2000, callback: createPresent, callbackScope: this, repeat: 1});
+    var presentPositionX = Math.floor(Math.random()*1400)+1;
+    var presentTMP = present.create(presentPositionX,10,presentImage);
+    presentTMP.play('presentImage');
+    presentTMP.body.setVelocityY(170);
+    presentTMP.setCollideWorldBounds(true);
+    presentTMP.body.onWorldBounds = true;
+    roundFromPresent = -1;
+    presentTimedEvent.paused = true;
+    console.log("Stworzyl sie present");
+}
+
+
 function createAsteroid()
 {
     asteroidEvent.reset({ delay: Phaser.Math.Between(100,5000), callback: createAsteroid, callbackScope: this, repeat: 1});
@@ -258,6 +326,19 @@ function enemyPlayerBulletCollision(enemy,bullet)
   bullet.destroy();
   //explode.destroy();
   console.log('celny strzał');
+}
+
+
+function playerPresentCollision(player, presentTMP)
+{
+    roundFromPresent = 0;
+
+    //dostaje losową nową broń
+
+    presentTMP.destroy();
+
+    timedEvent.paused = false;
+  console.log('zebrano bonus');
 }
 
 function asteroidPlayerBulletCollision(asteroid,bullet)
