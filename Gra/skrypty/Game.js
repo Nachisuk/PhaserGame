@@ -52,7 +52,8 @@ function preload ()
     this.load.image('stars', 'assety/Stars.png');
     this.load.image('shipbasic','assety/ship-basic.png');
     this.load.image('bullet','assety/bullet288.png');
-   enemyImage = this.load.image('enemy','assety/enemies1.png');
+    this.load.spritesheet('enemys', 'assety/enemies.png', { frameWidth: 64, frameHeight: 64});
+   //enemyImage = this.load.image('enemy','assety/enemies1.png');
    asteroidImage = this.load.image('asteroid1','assety/asteroidaType1.png');
    this.load.image('asteroid2','assety/asteroidaType2.png');
    this.load.image('asteroid3','assety/asteroidaType3.png');
@@ -240,7 +241,7 @@ function createEnemies()
     for(var i =0; i< enemyAmount; i++)
     {
 
-        var enemy = enemies.create(enemyPositionX,10,'enemy');
+        var enemy = enemies.create(enemyPositionX,10,'enemys',1);
         enemy.body.setVelocityY(20);
         enemy.setCollideWorldBounds(true);
         enemy.body.onWorldBounds = true;
