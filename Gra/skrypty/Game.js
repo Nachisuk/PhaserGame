@@ -45,12 +45,16 @@ var presentImage;
 var roundFromPresent;
 var presentTimedEvent;
 
+var firePower;
+var enemyHorizontalVelocity;
+
 function preload ()
 {
     //ładowanie obrazków
     this.load.image('background', 'assety/NebulaBlue.png');
     this.load.image('stars', 'assety/Stars.png');
-    this.load.image('shipbasic','assety/ship-basic.png');
+    //this.load.image('shipbasic','assety/ship-basic.png');
+    this.load.spritesheet('shipbasic_anim', 'assety/ship-basic_multi.png', { frameWidth: 93, frameHeight: 110});
     this.load.image('bullet','assety/bullet288.png');
     this.load.spritesheet('enemys', 'assety/enemies.png', { frameWidth: 64, frameHeight: 64});
    //enemyImage = this.load.image('enemy','assety/enemies1.png');
@@ -78,9 +82,22 @@ function create ()
     this.physics.world.setBounds(0, 0, 1400, 800, true, true, false, true);
 
     //tworzenie statku gracza
-    player = this.physics.add.sprite(550,700,'shipbasic').setOrigin(0.5,0.5).setBounce(0.2);
+    player = this.physics.add.sprite(550,700,'shipbasic_anim',0).setOrigin(0.5,0.5).setBounce(0.2);
+    
     player.setCollideWorldBounds(true);
+    
+    this.anims.create({
+        key: 'shipbasic',
+        frames: this.anims.generateFrameNumbers('shipbasic_anim', { start: 0, end: 2}),
+        frameRate: 10,
+        repeat: -1
+    });
 
+    player.anims.play('shipbasic');
+
+    firePower = 1;
+    enemyHorizontalVelocity = 150;
+    
     //tworzenie pocisków gracza
     bullets = this.physics.add.group({
         defaultKey: 'bullet',
@@ -141,7 +158,7 @@ function create ()
 
     //sterowanie
     cursors = this.input.keyboard.createCursorKeys();
-    fireButton = this.input.keyboard.addKeys({ 'up': Phaser.Input.Keyboard.KeyCodes.W, 'down': Phaser.Input.Keyboard.KeyCodes.S });
+    fireButton = this.input.keyboard.addKeys({ 'up': Phaser.Input.Keyboard.KeyCodes.SPACE, 'down': Phaser.Input.Keyboard.KeyCodes.S });
 
     //worldbounds
     this.physics.world.on('worldbounds', deleteEnemy);
@@ -168,16 +185,29 @@ function update (time,delta)
         if(cursors.up.isDown)
         {
             player.body.setVelocityY(-300);
+            starsfield.tilePositionY -= 0.7;
         }
 
         if(cursors.down.isDown)
         {
             player.body.setVelocityY(300);
+            starsfield.tilePositionY += 0.2;
         }
         if (fireButton.up.isDown)
         {
                 fireBullet();
         }
+
+
+    enemies.children.each(function(e){
+        if (e.body.onWall()){
+            console.log("NA ścianie!");
+        }
+        if (e.body.onFloor()){
+            deleteEnemy(e.body);
+        }
+            
+    })
 
     bullets.children.each(function (b){
         if (b.active) {
@@ -243,8 +273,10 @@ function createEnemies()
 
         var enemy = enemies.create(enemyPositionX,10,'enemys',1);
         enemy.body.setVelocityY(20);
+        enemy.body.setVelocityX(enemyHorizontalVelocity);
         enemy.setCollideWorldBounds(true);
-        enemy.body.onWorldBounds = true;
+        enemy.setBounce(1,0);
+        //enemy.body.onWorldBounds = true;
         enemy.hitpoints = 2;
         enemyPositionX = enemyPositionX + 150;
         
@@ -317,7 +349,7 @@ function playerEnemyBulletCollision(player,bullet)
 function enemyPlayerBulletCollision(enemy,bullet)
 {
 
-  enemy.hitpoints = enemy.hitpoints-1;
+  enemy.hitpoints = enemy.hitpoints-firePower;
   if(enemy.hitpoints <= 0)
   {
     var explode = this.add.sprite(enemy.body.x+15,enemy.body.y+15,'boom');
