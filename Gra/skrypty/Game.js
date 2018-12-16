@@ -46,6 +46,7 @@ var livesText;
 var numOfPoints;
 var pointsText;
 
+var enemyFireTime = Date.now();
 var present;
 var presentImage;
 var roundFromPresent;
@@ -62,6 +63,7 @@ function preload ()
     //this.load.image('shipbasic','assety/ship-basic.png');
     this.load.spritesheet('shipbasic_anim', 'assety/ship-basic_multi.png', { frameWidth: 93, frameHeight: 110});
     this.load.image('bullet','assety/bullet288.png');
+    this.load.image('enemybullet123','assety/bullet111.png');
     this.load.spritesheet('enemys', 'assety/enemies.png', { frameWidth: 64, frameHeight: 64});
    //enemyImage = this.load.image('enemy','assety/enemies1.png');
    asteroidImage = this.load.image('asteroid1','assety/asteroidaType1.png');
@@ -118,6 +120,8 @@ function create ()
     timedEvent.paused = true;
     //tworzenie pocisków przeciwników
 
+    enemyBullets = this.physics.add.group();
+
     //tworzenie asteroid
     asteroids = this.physics.add.group();
    // asteroidEvent = this.time.addEvent({delay:5000, callback: createAsteroid, callbackScope: this});
@@ -147,6 +151,8 @@ function create ()
 
     this.physics.add.overlap(enemies,asteroids,asteroidEnemyCollision,null,this);
     this.physics.add.overlap(asteroids,asteroids,asteroidAsteroidCollision,null,this);
+
+    this.physics.add.overlap(player,enemyBullets,playerEnemyBullets,null,this);
 
     //wybuchy
     var config = {
@@ -214,6 +220,11 @@ function update (time,delta)
         if (optionButtons.p.isDown)
         {
             // tu trzeba bedzie scene pauzować, bo tak chyba najszybciej
+        }
+
+        if(Date.now() > enemyFireTime)
+        {
+            enemyFires(this.physics);
         }
 
     enemies.children.each(function(e){
@@ -338,6 +349,22 @@ function createAsteroid()
   //  asteroid.on('worldbounds',deleteEnemy);
 }
 
+function enemyFires(scene)
+{
+
+    if(enemies.getLength() > 0)
+    {
+        var shootingEnemies = enemies.getChildren();
+        var shootingEnemy = shootingEnemies[Math.floor(Math.random()*(shootingEnemies.length-1))+0]; 
+        var enemyBullet = enemyBullets.create(shootingEnemy.body.x+10,shootingEnemy.body.y+15,'enemybullet123');
+        enemyBullet.setCollideWorldBounds(true);
+        enemyBullet.body.onWorldBounds = true;
+        //this.game.physics.moveToObject(enemyBullet,player,100,3000);
+        scene.moveToObject(enemyBullet,player,150,3000);
+        enemyFireTime = enemyFireTime+1000;
+    }
+}
+
 function deleteEnemy(body)
 {
     var object = body.gameObject;
@@ -454,4 +481,24 @@ function asteroidAsteroidCollision(asteroid1,asteroid2)
 {
     asteroid1.destroy();
     asteroid2.destroy();
+}
+
+function playerEnemyBullets(player,enemyBullet)
+{
+    numOfLives--;
+    livesText.text = 'Lives left - '+numOfLives;
+    if(numOfLives <= 0)
+    {
+        
+        var explode = this.add.sprite(player.body.x+15,player.body.y+15,'boom');
+        explode.setScale(3);
+        explode.anims.play('explode');
+
+        //gameOver();
+        //
+            numOfLives = 3;
+            livesText.text = 'Lives left - '+numOfLives;
+        //
+    }
+    enemyBullet.destroy();
 }
