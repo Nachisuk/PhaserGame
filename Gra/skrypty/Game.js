@@ -23,6 +23,7 @@ var game = new Phaser.Game(config);
 var background;
 var starsfield;
 var fireButton;
+var optionButtons;
 var player;
 var speed;
 var bullets;
@@ -39,6 +40,11 @@ var asteroidEvent;
 var enemyBullets;
 var explosions;
 var explodeAnimation;
+
+var numOfLives;
+var livesText;
+var numOfPoints;
+var pointsText;
 
 var present;
 var presentImage;
@@ -64,6 +70,7 @@ function preload ()
    this.load.image('asteroid4','assety/asteroidaType4.png');
    this.load.spritesheet('boom', 'assety/explosion.png', { frameWidth: 64, frameHeight: 64, endFrame: 23 });
    this.load.spritesheet('coin', 'assety/coin.png', { frameWidth: 32, frameHeight: 32});
+   this.load.bitmapFont('testFont', 'assety/fonts/nokia.png','assety/fonts/nokia.xml');
 }
 
 function create ()
@@ -83,8 +90,9 @@ function create ()
 
     //tworzenie statku gracza
     player = this.physics.add.sprite(550,700,'shipbasic_anim',0).setOrigin(0.5,0.5).setBounce(0.2);
-    
     player.setCollideWorldBounds(true);
+    numOfLives = 3;
+    numOfPoints = -200; // za pierwszą wygenerowaną falę przeciwników
     
     this.anims.create({
         key: 'shipbasic',
@@ -160,9 +168,14 @@ function create ()
     cursors = this.input.keyboard.createCursorKeys();
     fireButton = this.input.keyboard.addKeys({ 'up': Phaser.Input.Keyboard.KeyCodes.SPACE, 'down': Phaser.Input.Keyboard.KeyCodes.S });
 
+    optionButtons = this.input.keyboard.addKeys({'esc': Phaser.Input.Keyboard.KeyCodes.ESC, 'p': Phaser.Input.Keyboard.KeyCodes.P});
+
     //worldbounds
     this.physics.world.on('worldbounds', deleteEnemy);
     
+
+    livesText = this.add.bitmapText(20, 20, 'testFont', 'Lives left - '+numOfLives);
+    pointsText = this.add.bitmapText(20, 57, 'testFont', 'Score - 0');
 }
 
 function update (time,delta)
@@ -198,6 +211,10 @@ function update (time,delta)
                 fireBullet();
         }
 
+        if (optionButtons.p.isDown)
+        {
+            // tu trzeba bedzie scene pauzować, bo tak chyba najszybciej
+        }
 
     enemies.children.each(function(e){
         if (e.body.onWall()){
@@ -230,10 +247,13 @@ function update (time,delta)
         {
             roundFromPresent++; //zwieksz runde
             timedEvent.paused = false; //wznow tworzenie przeciwnikow
+            numOfPoints += 200;
+            pointsText.text = 'Score - '+numOfPoints;
         }
         else 
         {
             timedEvent.paused = false; //wznow tworzenie przeciwnikow
+            
         }
         
     }
@@ -244,6 +264,8 @@ function update (time,delta)
 
     
 }
+
+
 
 function fireBullet () {
 
@@ -291,6 +313,7 @@ function createPresent()
     presentTimedEvent.reset({delay:2000, callback: createPresent, callbackScope: this, repeat: 1});
     var presentPositionX = Math.floor(Math.random()*1400)+1;
     var presentTMP = present.create(presentPositionX,10,presentImage);
+    presentTMP.setScale(2);
     presentTMP.play('presentImage');
     presentTMP.body.setVelocityY(170);
     presentTMP.setCollideWorldBounds(true);
@@ -332,12 +355,49 @@ function playerAsteroidCollision(player,asteroid)
     //Dla Testu:
     asteroid.destroy();
 
+    numOfLives--;
+    livesText.text = 'Lives left - '+numOfLives;
+
+    if(numOfLives <= 0)
+    {
+        
+        var explode = this.add.sprite(player.body.x+15,player.body.y+15,'boom');
+        explode.setScale(3);
+        explode.anims.play('explode');
+
+        //gameOver();
+        //
+            numOfLives = 3;
+            livesText.text = 'Lives left - '+numOfLives;
+        //
+    }
+
     console.log('kolizja asteroidy i gracza');
 }
 
 function playerEnemyCollision(player,enemy)
 {
+    var explode = this.add.sprite(enemy.body.x+15,enemy.body.y+15,'boom');
+    explode.anims.play('explode');
     enemy.destroy();
+    
+    numOfLives--;
+    livesText.text = 'Lives left - '+numOfLives;
+
+    if(numOfLives <= 0)
+    {
+        
+        var explode = this.add.sprite(player.body.x+15,player.body.y+15,'boom');
+        explode.setScale(3);
+        explode.anims.play('explode');
+
+        //gameOver();
+        //
+            numOfLives = 3;
+            livesText.text = 'Lives left - '+numOfLives;
+        //
+    }
+
     console.log('zderzenie przeciwnika z graczem');
 }
 
@@ -355,6 +415,9 @@ function enemyPlayerBulletCollision(enemy,bullet)
     var explode = this.add.sprite(enemy.body.x+15,enemy.body.y+15,'boom');
     explode.anims.play('explode');
     enemy.destroy();
+
+    numOfPoints += 50;
+    pointsText.text = 'Score - '+numOfPoints;
   }
   bullet.destroy();
   //explode.destroy();
