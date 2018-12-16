@@ -55,6 +55,9 @@ var presentTimedEvent;
 var firePower;
 var enemyHorizontalVelocity;
 
+var gameOver = false;
+var PauseTime;
+
 function preload ()
 {
     //ładowanie obrazków
@@ -174,11 +177,11 @@ function create ()
     cursors = this.input.keyboard.createCursorKeys();
     fireButton = this.input.keyboard.addKeys({ 'up': Phaser.Input.Keyboard.KeyCodes.SPACE, 'down': Phaser.Input.Keyboard.KeyCodes.S });
 
-    optionButtons = this.input.keyboard.addKeys({'esc': Phaser.Input.Keyboard.KeyCodes.ESC, 'p': Phaser.Input.Keyboard.KeyCodes.P});
+    optionButtons = this.input.keyboard.addKeys({'esc': Phaser.Input.Keyboard.KeyCodes.ESC, 'p': Phaser.Input.Keyboard.KeyCodes.P, 'o': Phaser.Input.Keyboard.KeyCodes.O});
 
     //worldbounds
-    this.physics.world.on('worldbounds', deleteEnemy);
-    
+    this.physics.world.on('worldbounds', deleteEnemy,0,this.scene);
+    this.events.on('pause',pauseHandler);
 
     livesText = this.add.bitmapText(20, 20, 'testFont', 'Lives left - '+numOfLives);
     pointsText = this.add.bitmapText(20, 57, 'testFont', 'Score - 0');
@@ -219,7 +222,9 @@ function update (time,delta)
 
         if (optionButtons.p.isDown)
         {
-            // tu trzeba bedzie scene pauzować, bo tak chyba najszybciej
+            PauseTime = Date.now();
+            optionButtons.p.isDown = false;
+            this.scene.pause();
         }
 
         if(Date.now() > enemyFireTime)
@@ -273,6 +278,11 @@ function update (time,delta)
         timedEvent.paused = true;
     }
 
+    if(gameOver == true)
+    {
+        gameOver = false;
+        this.scene.restart();
+    }
     
 }
 
@@ -394,8 +404,7 @@ function playerAsteroidCollision(player,asteroid)
 
         //gameOver();
         //
-            numOfLives = 3;
-            livesText.text = 'Lives left - '+numOfLives;
+        gameOver = true;
         //
     }
 
@@ -420,8 +429,7 @@ function playerEnemyCollision(player,enemy)
 
         //gameOver();
         //
-            numOfLives = 3;
-            livesText.text = 'Lives left - '+numOfLives;
+         gameOver = true;
         //
     }
 
@@ -494,11 +502,15 @@ function playerEnemyBullets(player,enemyBullet)
         explode.setScale(3);
         explode.anims.play('explode');
 
-        //gameOver();
-        //
-            numOfLives = 3;
-            livesText.text = 'Lives left - '+numOfLives;
-        //
+        gameOver = true;
     }
     enemyBullet.destroy();
+}
+
+function pauseHandler(scene1)
+{
+
+
+    while(!(optionButtons.p.isDown))  console.log('hello there');
+    scene1.resume();
 }
