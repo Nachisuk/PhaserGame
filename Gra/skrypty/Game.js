@@ -1,3 +1,33 @@
+var pauseScene = new Phaser.Scene('pauseScene');
+
+pauseScene.preload = function () {
+    this.load.bitmapFont('testFont', 'assety/fonts/nokia.png','assety/fonts/nokia.xml');
+};
+
+pauseScene.create = function () {
+    this.scene.pause('mainGame');
+    console.log(this.sys.settings.key, 'is alive');
+    this.optionButtons = this.input.keyboard.addKeys({'esc': Phaser.Input.Keyboard.KeyCodes.ESC, 'p': Phaser.Input.Keyboard.KeyCodes.P, 'o': Phaser.Input.Keyboard.KeyCodes.O});
+    this.pauseText = this.add.bitmapText(1300, 760, 'testFont', 'PAUSE');
+    this.pauseTextFlashing = this.time.addEvent({delay:400, callback: function(){
+        if(this.pauseText.text != "")
+            this.pauseText.text = "";
+        else
+            this.pauseText.text = "PAUSE";
+        }, callbackScope: this, repeat: -1});
+}
+
+pauseScene.update = function() {
+    console.log("Pauza w trakcie");    
+    if (this.optionButtons.p.isDown || this.optionButtons.esc.isDown)
+        {
+            console.log("Wcisnieto P lub ESC podczas pauzy");
+            this.scene.resume('mainGame');
+            this.scene.stop('pauseScene');
+        }
+}
+
+
 var config = {
     type: Phaser.AUTO,
     width: 1400,
@@ -9,11 +39,12 @@ var config = {
 
         }
     },
-    scene: {
+    scene: [{
+        key: 'mainGame',
         preload: preload,
         create: create,
         update: update
-    }
+    },pauseScene]
 };
 
 //tworzenie gry?
@@ -58,8 +89,11 @@ var enemyHorizontalVelocity;
 var gameOver = false;
 var PauseTime;
 
+
+
 function preload ()
 {
+    
     //ładowanie obrazków
     this.load.image('background', 'assety/NebulaBlue.png');
     this.load.image('stars', 'assety/Stars.png');
@@ -79,7 +113,7 @@ function preload ()
 }
 
 function create ()
-{
+{ 
     //środkowanie?
     //this.cameras.main.setBounds(-1024, -1024, 1024 * 2, 1024 * 2);
 
@@ -99,12 +133,13 @@ function create ()
     numOfLives = 3;
     numOfPoints = -200; // za pierwszą wygenerowaną falę przeciwników
     
-    this.anims.create({
-        key: 'shipbasic',
-        frames: this.anims.generateFrameNumbers('shipbasic_anim', { start: 0, end: 2}),
-        frameRate: 10,
-        repeat: -1
-    });
+    if (!this.anims.get('shipbasic'))
+        this.anims.create({
+            key: 'shipbasic',
+            frames: this.anims.generateFrameNumbers('shipbasic_anim', { start: 0, end: 2}),
+            frameRate: 10,
+            repeat: -1
+        });
 
     player.anims.play('shipbasic');
 
@@ -158,20 +193,20 @@ function create ()
     this.physics.add.overlap(player,enemyBullets,playerEnemyBullets,null,this);
 
     //wybuchy
-    var config = {
-        key: 'explode',
-        frames: this.anims.generateFrameNumbers('boom', { start: 0, end: 23, first: 23 }),
-        frameRate: 20
-    };
-    this.anims.create(config);
+    if (!this.anims.get('explode'))
+        this.anims.create({
+            key: 'explode',
+            frames: this.anims.generateFrameNumbers('boom', { start: 0, end: 23, first: 23 }),
+            frameRate: 20
+        });
 
-    var config2 = {
-        key: 'presentImage',
-        frames: this.anims.generateFrameNumbers('coin', { start: 0, end: 6}),
-        frameRate: 20,
-        repeat: -1
-    };
-    this.anims.create(config2);
+    if (!this.anims.get('presentImage'))
+        this.anims.create({
+            key: 'presentImage',
+            frames: this.anims.generateFrameNumbers('coin', { start: 0, end: 6}),
+            frameRate: 20,
+            repeat: -1
+        });
 
     //sterowanie
     cursors = this.input.keyboard.createCursorKeys();
@@ -181,10 +216,19 @@ function create ()
 
     //worldbounds
     this.physics.world.on('worldbounds', deleteEnemy,0,this.scene);
-    this.events.on('pause',pauseHandler);
 
-    livesText = this.add.bitmapText(20, 20, 'testFont', 'Lives left - '+numOfLives);
-    pointsText = this.add.bitmapText(20, 57, 'testFont', 'Score - 0');
+    livesText = this.add.bitmapText(20, 20, 'testFont', 'Lives left = '+numOfLives);
+    pointsText = this.add.bitmapText(20, 57, 'testFont', 'Score = 0');
+}
+
+function relieveButtons()
+{
+    optionButtons.p.isDown = false;
+    fireButton.up.isDown = false;
+    cursors.down.isDown = false;
+    cursors.up.isDown = false;
+    cursors.right.isDown = false;
+    cursors.left.isDown = false;
 }
 
 function update (time,delta)
@@ -223,8 +267,14 @@ function update (time,delta)
         if (optionButtons.p.isDown)
         {
             PauseTime = Date.now();
-            optionButtons.p.isDown = false;
-            this.scene.pause();
+            relieveButtons();
+            this.scene.launch('pauseScene');
+            this.scene.pause('mainGame');
+        }
+
+        if (optionButtons.esc.isDown)
+        {
+            this.scene.restart();
         }
 
         if(Date.now() > enemyFireTime)
@@ -233,9 +283,6 @@ function update (time,delta)
         }
 
     enemies.children.each(function(e){
-        if (e.body.onWall()){
-            console.log("NA ścianie!");
-        }
         if (e.body.onFloor()){
             deleteEnemy(e.body);
         }
@@ -264,7 +311,7 @@ function update (time,delta)
             roundFromPresent++; //zwieksz runde
             timedEvent.paused = false; //wznow tworzenie przeciwnikow
             numOfPoints += 200;
-            pointsText.text = 'Score - '+numOfPoints;
+            pointsText.text = 'Score = '+numOfPoints;
         }
         else 
         {
@@ -307,26 +354,22 @@ function fireBullet () {
 
 function createEnemies()
 {
-    
     timedEvent.reset({ delay: Phaser.Math.Between(3000,10000), callback: createEnemies, callbackScope: this, repeat: 1});
+    var fromLeft = (Math.floor(Math.random()*2)+1 == 1)?true:false; 
     var enemyPositionX = 100;
     var enemyAmount = Math.floor(Math.random()*10)+1;
+    var enemiesHealth = Math.floor(Math.random()*4)+1;
     for(var i =0; i< enemyAmount; i++)
     {
-
-        var enemy = enemies.create(enemyPositionX,10,'enemys',1);
+        var enemy = enemies.create((fromLeft)?enemyPositionX:1400-enemyPositionX,10,'enemys',1);
         enemy.body.setVelocityY(20);
-        enemy.body.setVelocityX(enemyHorizontalVelocity);
+        enemy.body.setVelocityX((fromLeft)?enemyHorizontalVelocity:-enemyHorizontalVelocity);
         enemy.setCollideWorldBounds(true);
         enemy.setBounce(1,0);
-        //enemy.body.onWorldBounds = true;
-        enemy.hitpoints = 2;
+        enemy.hitpoints = enemiesHealth;
         enemyPositionX = enemyPositionX + 150;
-        
     }
-
-   // enemy.on('worldbounds',deleteEnemy);
-    console.log('fajno');
+    console.log('EnemiesCreated');
 }
 
 function createPresent()
@@ -356,7 +399,6 @@ function createAsteroid()
     asteroid.setCollideWorldBounds(true);
     asteroid.body.onWorldBounds = true;
     console.log('asteroid spawn');
-  //  asteroid.on('worldbounds',deleteEnemy);
 }
 
 function enemyFires(scene)
@@ -379,7 +421,6 @@ function deleteEnemy(body)
 {
     var object = body.gameObject;
     object.destroy();
-    console.log('white +1');
 }
 
 function asteroidCollide(bodyA, bodyB)
@@ -393,7 +434,7 @@ function playerAsteroidCollision(player,asteroid)
     asteroid.destroy();
 
     numOfLives--;
-    livesText.text = 'Lives left - '+numOfLives;
+    livesText.text = 'Lives left = '+numOfLives;
 
     if(numOfLives <= 0)
     {
@@ -418,7 +459,7 @@ function playerEnemyCollision(player,enemy)
     enemy.destroy();
     
     numOfLives--;
-    livesText.text = 'Lives left - '+numOfLives;
+    livesText.text = 'Lives left = '+numOfLives;
 
     if(numOfLives <= 0)
     {
@@ -452,7 +493,7 @@ function enemyPlayerBulletCollision(enemy,bullet)
     enemy.destroy();
 
     numOfPoints += 50;
-    pointsText.text = 'Score - '+numOfPoints;
+    pointsText.text = 'Score = '+numOfPoints;
   }
   bullet.destroy();
   //explode.destroy();
@@ -494,7 +535,7 @@ function asteroidAsteroidCollision(asteroid1,asteroid2)
 function playerEnemyBullets(player,enemyBullet)
 {
     numOfLives--;
-    livesText.text = 'Lives left - '+numOfLives;
+    livesText.text = 'Lives left = '+numOfLives;
     if(numOfLives <= 0)
     {
         
@@ -505,12 +546,4 @@ function playerEnemyBullets(player,enemyBullet)
         gameOver = true;
     }
     enemyBullet.destroy();
-}
-
-function pauseHandler(scene1)
-{
-
-
-    while(!(optionButtons.p.isDown))  console.log('hello there');
-    scene1.resume();
 }
