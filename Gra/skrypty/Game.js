@@ -199,7 +199,8 @@ function create ()
 
     //tworzenie asteroid
     asteroids = this.physics.add.group();
-   // asteroidEvent = this.time.addEvent({delay:5000, callback: createAsteroid, callbackScope: this});
+    //asteroidEvent = this.time.addEvent({delay:200, callback: createOneAsteroid, callbackScope: this, repeat: 10});
+    //asteroidEvent.paused = true;
 
    present = this.physics.add.group();
    roundFromPresent = -1;
@@ -209,14 +210,6 @@ function create ()
    var tmpFunkcja = function(){return presentInfoEventCallback("")};
    presentInfoEvent = this.time.addEvent({delay:400, callback: tmpFunkcja, callbackScope: this, repeat: 9});
    
-    //kolizje
-    //this.physics.add.collider(player,asteroids);
-    //this.physics.add.collider(player,enemies);
-    //this.physics.add.collider(asteroids,asteroids);
-    //this.physics.add.collider(enemies,enemies);
-    //this.physics.add.collider(bullets,enemies);
-    //this.physics.add.collider(bullets,asteroids);
-
     this.physics.add.overlap(player, present, playerPresentCollision, null, this);
 
     this.physics.add.overlap(player,asteroids,playerAsteroidCollision,null,this);
@@ -259,7 +252,10 @@ function create ()
 
     livesText = this.add.bitmapText(20, 20, 'testFont', 'Lives left = '+numOfLives);
     pointsText = this.add.bitmapText(20, 57, 'testFont', 'Score = 0');
+    livesText.depth = 5;
+    pointsText.depth = 5;
     presentInfoText = this.add.bitmapText(20, 94, 'testFont', "");
+    presentInfoText.depth = 5;
 }
 
 function relieveButtons()
@@ -330,6 +326,13 @@ function update (time,delta)
             
     })
 
+    asteroids.children.each(function(e){
+        if (e.body.onFloor()){
+            deleteEnemy(e.body);
+        }
+            
+    })
+
     bullets.children.each(function (b){
         if (b.active) {
             if (b.body.y < -100) {
@@ -340,7 +343,7 @@ function update (time,delta)
     }.bind(this));
 
 
-    if(enemies.getLength()==0 && presentTimedEvent.paused == true)//jezeli nie mamy na ekranie juz przeciwnikow i nie tworzy sie prezent
+    if(enemies.getLength()==0 && asteroids.getLength()==0 && presentTimedEvent.paused == true)//jezeli nie mamy na ekranie juz przeciwnikow i nie tworzy sie prezent
     {
         if (timedEvent.paused && roundFromPresent == 1) // jezeli nie tworzą się jeszcze enemy a juz to druga runda byla
         {
@@ -374,12 +377,13 @@ function update (time,delta)
         var explode = this.add.sprite(player.body.x+15,player.body.y+15,'boom');
         explode.setScale(3);
         explode.anims.play('explode');
-
+        
         this.scene.launch('gameOverScene');
         this.scene.pause('mainGame');
         //this.scene.restart();
     }
     
+
 }
 
 
@@ -404,6 +408,18 @@ function fireBullet () {
 function createEnemies()
 {
     timedEvent.reset({ delay: Phaser.Math.Between(3000,10000), callback: createEnemies, callbackScope: this, repeat: 1});
+    var shootingOnes = (Math.floor(Math.random()*2)+1 == 1)?true:false;
+    if(shootingOnes)
+        createShootingEnemies();
+    else
+    {
+        var howManyAster = Phaser.Math.Between(8,35)
+        this.time.addEvent({ delay: 400, callback: createOneAsteroid, callbackScope: this, repeat: howManyAster});
+    }
+    
+}
+
+function createShootingEnemies(){
     var fromLeft = (Math.floor(Math.random()*2)+1 == 1)?true:false; 
     var enemyPositionX = 100;
     var enemyAmount = Math.floor(Math.random()*10)+1;
@@ -420,7 +436,6 @@ function createEnemies()
         enemy.hitpoints = enemiesHealth;
         enemyPositionX = enemyPositionX + 150;
     }
-    
 }
 
 function createPresent()
@@ -438,18 +453,16 @@ function createPresent()
     console.log("Stworzyl sie present");
 }
 
-
-function createAsteroid()
-{
-    asteroidEvent.reset({ delay: Phaser.Math.Between(100,5000), callback: createAsteroid, callbackScope: this, repeat: 1});
-    var asteroidPositionX = Math.floor(Math.random()*1400)+1;
+function createOneAsteroid(){
+    var delX = Math.floor(Math.random()*500)+1;
+    if (Math.floor(Math.random()*2)+1 == 1)
+        delX = -delX;
+    var asteroidPositionX = player.body.x + delX;
     var table = ['asteroid1','asteroid2','asteroid3','asteroid4'];
     var asteroid = asteroids.create(asteroidPositionX,10,table[Math.floor(Math.random()*3)+0]);
     var asteroidVelocity = Math.floor(Math.random*400)+100;
     asteroid.body.setVelocityY(170);
     asteroid.setCollideWorldBounds(true);
-    asteroid.body.onWorldBounds = true;
-    console.log('asteroid spawn');
 }
 
 function enemyFires(scene)
@@ -474,11 +487,6 @@ function deleteEnemy(body)
     object.destroy();
 }
 
-function asteroidCollide(bodyA, bodyB)
-{
-    console.log('kolizja z asteroidą');
-}
-
 function playerAsteroidCollision(player,asteroid)
 {
     //Dla Testu:
@@ -489,12 +497,7 @@ function playerAsteroidCollision(player,asteroid)
 
     if(numOfLives <= 0)
     {
-        
-        
-        //gameOver();
-        //
         gameOver = true;
-        //
     }
 
     console.log('kolizja asteroidy i gracza');
@@ -616,8 +619,8 @@ function asteroidEnemyCollision(enemy,asteroid)
 }
 function asteroidAsteroidCollision(asteroid1,asteroid2)
 {
-    asteroid1.destroy();
-    asteroid2.destroy();
+    //asteroid1.destroy();
+    //asteroid2.destroy();
 }
 
 function playerEnemyBullets(player,enemyBullet)
@@ -626,11 +629,6 @@ function playerEnemyBullets(player,enemyBullet)
     livesText.text = 'Lives left = '+numOfLives;
     if(numOfLives <= 0)
     {
-        
-        var explode = this.add.sprite(player.body.x+15,player.body.y+15,'boom');
-        explode.setScale(3);
-        explode.anims.play('explode');
-
         gameOver = true;
     }
     enemyBullet.destroy();
