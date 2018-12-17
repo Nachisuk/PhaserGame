@@ -27,6 +27,36 @@ pauseScene.update = function() {
         }
 }
 
+var gameOverScene = new Phaser.Scene('gameOverScene');
+
+gameOverScene.preload = function () {
+    this.load.bitmapFont('testFont', 'assety/fonts/nokia.png','assety/fonts/nokia.xml');
+};
+
+gameOverScene.create = function () {
+    this.scene.pause('mainGame');
+    console.log(this.sys.settings.key, 'is alive');
+    this.optionButtons = this.input.keyboard.addKeys({'esc': Phaser.Input.Keyboard.KeyCodes.ESC, 'p': Phaser.Input.Keyboard.KeyCodes.P, 'r': Phaser.Input.Keyboard.KeyCodes.R});
+    this.pauseText = this.add.bitmapText(1220, 760, 'testFont', 'GAME OVER');
+    this.pauseTextFlashing = this.time.addEvent({delay:400, callback: function(){
+        if(this.pauseText.text != "")
+            this.pauseText.text = "";
+        else
+            this.pauseText.text = "GAME OVER";
+        }, callbackScope: this, repeat: -1});
+}
+
+gameOverScene.update = function() {
+    console.log("GameOver w trakcie");    
+    if (this.optionButtons.r.isDown || this.optionButtons.esc.isDown)
+        {
+            console.log("Wcisnieto R lub ESC podczas gameOver");
+            //this.scene.resume('mainGame');
+            this.scene.stop('gameOverScene');
+            this.scene.start('mainGame');
+        }
+}
+
 
 var config = {
     type: Phaser.AUTO,
@@ -44,7 +74,7 @@ var config = {
         preload: preload,
         create: create,
         update: update
-    },pauseScene]
+    },pauseScene, gameOverScene]
 };
 
 //tworzenie gry?
@@ -88,8 +118,10 @@ var enemyHorizontalVelocity;
 
 var gameOver = false;
 var PauseTime;
-
-
+var setOfEnemiesLooks;
+var presentInfoEvent;
+var presentInfoText;
+var presentOptions;
 
 function preload ()
 {
@@ -145,6 +177,8 @@ function create ()
 
     firePower = 1;
     enemyHorizontalVelocity = 150;
+
+    presentOptions = ["newFirePower", "+HP", "+Score"];
     
     //tworzenie pocisków gracza
     bullets = this.physics.add.group({
@@ -156,6 +190,9 @@ function create ()
     enemies = this.physics.add.group();
     timedEvent = this.time.addEvent({delay:2000, callback: createEnemies, callbackScope: this});
     timedEvent.paused = true;
+
+    setOfEnemiesLooks = [0,1,2,4,6,8];
+
     //tworzenie pocisków przeciwników
 
     enemyBullets = this.physics.add.group();
@@ -169,6 +206,9 @@ function create ()
    presentTimedEvent = this.time.addEvent({delay:2000, callback: createPresent, callbackScope: this});
    presentTimedEvent.paused = true;
 
+   var tmpFunkcja = function(){return presentInfoEventCallback("")};
+   presentInfoEvent = this.time.addEvent({delay:400, callback: tmpFunkcja, callbackScope: this, repeat: 9});
+   
     //kolizje
     //this.physics.add.collider(player,asteroids);
     //this.physics.add.collider(player,enemies);
@@ -219,6 +259,7 @@ function create ()
 
     livesText = this.add.bitmapText(20, 20, 'testFont', 'Lives left = '+numOfLives);
     pointsText = this.add.bitmapText(20, 57, 'testFont', 'Score = 0');
+    presentInfoText = this.add.bitmapText(20, 94, 'testFont', "");
 }
 
 function relieveButtons()
@@ -327,8 +368,16 @@ function update (time,delta)
 
     if(gameOver == true)
     {
+        
+        PauseTime = Date.now();
         gameOver = false;
-        this.scene.restart();
+        var explode = this.add.sprite(player.body.x+15,player.body.y+15,'boom');
+        explode.setScale(3);
+        explode.anims.play('explode');
+
+        this.scene.launch('gameOverScene');
+        this.scene.pause('mainGame');
+        //this.scene.restart();
     }
     
 }
@@ -358,10 +407,12 @@ function createEnemies()
     var fromLeft = (Math.floor(Math.random()*2)+1 == 1)?true:false; 
     var enemyPositionX = 100;
     var enemyAmount = Math.floor(Math.random()*10)+1;
-    var enemiesHealth = Math.floor(Math.random()*4)+1;
+    var enemiesHealth = Math.floor(Math.random()*5)+1;
+    var enemiesLookNr = setOfEnemiesLooks[Phaser.Math.Between(0,setOfEnemiesLooks.length-1)];
+    console.log("EnemiesCreated of: HP - "+enemiesHealth + ", from - "+ ((fromLeft)?"left":"right") + ", ofAmout - "+enemyAmount);
     for(var i =0; i< enemyAmount; i++)
     {
-        var enemy = enemies.create((fromLeft)?enemyPositionX:1400-enemyPositionX,10,'enemys',1);
+        var enemy = enemies.create((fromLeft)?enemyPositionX:1400-enemyPositionX,10,'enemys',enemiesLookNr);
         enemy.body.setVelocityY(20);
         enemy.body.setVelocityX((fromLeft)?enemyHorizontalVelocity:-enemyHorizontalVelocity);
         enemy.setCollideWorldBounds(true);
@@ -369,7 +420,7 @@ function createEnemies()
         enemy.hitpoints = enemiesHealth;
         enemyPositionX = enemyPositionX + 150;
     }
-    console.log('EnemiesCreated');
+    
 }
 
 function createPresent()
@@ -439,10 +490,7 @@ function playerAsteroidCollision(player,asteroid)
     if(numOfLives <= 0)
     {
         
-        var explode = this.add.sprite(player.body.x+15,player.body.y+15,'boom');
-        explode.setScale(3);
-        explode.anims.play('explode');
-
+        
         //gameOver();
         //
         gameOver = true;
@@ -500,17 +548,57 @@ function enemyPlayerBulletCollision(enemy,bullet)
   console.log('celny strzał');
 }
 
+function presentInfoEventCallback(tekst){
+    if(presentInfoText.text != "")
+            presentInfoText.text = "";
+    else
+        presentInfoText.text = ""+tekst;
+}
 
 function playerPresentCollision(player, presentTMP)
 {
+    
+    
     roundFromPresent = 0;
 
-    //dostaje losową nową broń
+    var alertText = "OMG";
+    var chosenOption = presentOptions[Phaser.Math.Between(0,presentOptions.length-1)];
+    //"newFirePower", "+HP", "+Score"
+
+
+    switch (chosenOption)
+    {
+        case "newFirePower":
+            var prevFirePower = firePower;
+            firePower = Phaser.Math.Between(1,5);
+            alert = (firePower>prevFirePower)?"FirePower UP":"FirePower DOWN";
+            alert = alert + " ("+firePower+")";
+            break;
+        case "+HP":
+            var additionalHP = Phaser.Math.Between(1,5);
+            numOfLives += additionalHP;
+            livesText.text = 'Lives left = '+numOfLives;
+            alert = "+ "+additionalHP+" HP";
+            break;
+        case "+Score":
+            var additionalScore = Phaser.Math.Between(1,5);
+            additionalScore = additionalScore*100;
+            numOfPoints += additionalScore;
+            pointsText.text = 'Score = '+numOfPoints;
+            alert = "+ "+additionalScore+" PT";
+            break;
+        default:
+            alert = ":<";
+    }
+
+    var tmpFunkcja = function(){return presentInfoEventCallback(alert)};
+    this.time.addEvent({delay:400, callback: tmpFunkcja, callbackScope: this, repeat: 9});
 
     presentTMP.destroy();
 
     timedEvent.paused = false;
-  console.log('zebrano bonus');
+  console.log('GotBonus: ' + alert);
+  
 }
 
 function asteroidPlayerBulletCollision(asteroid,bullet)
